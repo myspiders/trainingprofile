@@ -1,0 +1,51 @@
+import requests
+import json
+import csv
+from pyquery import PyQuery as pq
+url1='http://www.cbrc.gov.cn/zhuanti/xzcf/get2and3LevelXZCFDocListDividePage//1.html?current='
+headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 SE 2.X MetaSr 1.0'}
+
+data={}
+with open('xingzheng.csv','w',newline='',encoding='utf-8') as f:#准备保存数据到csv中
+        title=['n_nmuber','name','name_L','jdanr','jdann','reason','according','method','jname','date']
+        writer=csv.DictWriter(f,fieldnames=title)
+        writer.writeheader()
+        for i in range(4,13):
+            url=url1+str(i)
+            response=requests.get(url,headers=headers)
+            response.encoding='utf-8'
+            k=response.text
+            doc=pq(k)
+            links=doc.find('#testUI tr')#print(links)
+            for item in links.items():
+                link=item.find('td.cc>a').attr['href']
+                t_url='http://www.cbrc.gov.cn'+str(link)
+                r=requests.get(t_url,headers=headers)
+                r.encoding='utf-8'
+                r1=r.text
+                r2=pq(r1)
+                lenc=r2.find('table.MsoNormalTable tr')
+                if len(lenc)==9:
+                    data['n_nmuber']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(1) > td:nth-child(2) p').text()).strip()#行政处罚决定文书
+                    data['name']=r2.find('table.MsoNormalTable >tr:nth-child(2) > td:nth-child(3) p').text()#处罚个人姓名
+                    data['name_L']=''#处罚个人单位
+                    data['jdanr']=r2.find('table.MsoNormalTable >tr:nth-child(3) > td:nth-child(3) p').text()#单位名称
+                    data['jdann']=r2.find('table.MsoNormalTable >tr:nth-child(4) > td:nth-child(2) p').text()#单位负责人
+                    data['reason']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(5) > td:nth-child(2) p').text()).strip()#处罚案由
+                    data['according']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(6) > td:nth-child(2) p').text()).strip()#处罚依据
+                    data['method']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(7) > td:nth-child(2) p').text()).strip()#处罚决定
+                    data['jname']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(8) > td:nth-child(2) p').text()).strip()#做出处罚的机关单位
+                    data['date']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(9) > td:nth-child(2) p').text()).strip()#处罚日期
+                if len(lenc)==10:
+                    data['n_nmuber']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(1) > td:nth-child(2) p').text()).strip()#行政处罚决定文书
+                    data['name']=r2.find('table.MsoNormalTable >tr:nth-child(2) > td:nth-child(4) p').text()#处罚个人姓名
+                    data['name_L']=r2.find('table.MsoNormalTable >tr:nth-child(3) > td:nth-child(2) p').text()#处罚个人单位
+                    data['jdanr']=r2.find('table.MsoNormalTable >tr:nth-child(4) > td:nth-child(3) p').text()#单位名称
+                    data['jdann']=r2.find('table.MsoNormalTable >tr:nth-child(5) > td:nth-child(2) p').text()#单位负责人
+                    data['reason']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(6) > td:nth-child(2) p').text()).strip()#处罚案由
+                    data['according']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(7) > td:nth-child(2) p').text()).strip()#处罚依据
+                    data['method']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(8) > td:nth-child(2) p').text()).strip()#处罚决定
+                    data['jname']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(9) > td:nth-child(2) p').text()).strip()#做出处罚的机关单位
+                    data['date']=''.join(r2.find('table.MsoNormalTable >tr:nth-child(10) > td:nth-child(2) p').text()).strip()#处罚日期
+                writer.writerow(data)
+                print('第'+str(i)+'页'+',成功')
