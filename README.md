@@ -1,2 +1,2 @@
-# trainingprofile
-some codes
+# 主要爬虫抓取程序
+一些后面自己写的爬虫程序，包括基于requests和Scrapy爬虫框架的，暂时没有写基于redis数据库的分布式爬虫
