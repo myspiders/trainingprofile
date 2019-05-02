@@ -1,0 +1,63 @@
+import pandas as pd
+import os
+import numpy as np
+from math import log
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+os.chdir('C:/Users/约明/Desktop/')
+df=pd.read_excel('数据.xlsx',sheet_name=0)
+
+df1=df.dropna()#去除所有的缺失值
+
+'''计算K值和D值，并获得分组数据'''
+#定义计算RSV值的函数
+def rsv(datasets,axis=0):
+    data=datasets.iloc[axis:axis+7,:]
+    H=max(data['现货'])
+    L=min(data['现货'])
+    C=np.array(data['现货'])[-1]
+    ini_rsv=(C-L)/(H-L)
+    return ini_rsv
+#定义rsv的序列值
+def rsv_x(datasets):
+    RSV=[]
+    for i in range(len(datasets)-6):
+        rsv_1=100*rsv(datasets,i)
+        RSV.append(rsv_1)
+    return RSV
+#定义K值和D值的序列
+def KD(RSV,ini_K=74.21,ini_D=61.05):
+    K=[]
+    D=[]
+    for i in range(len(RSV)):
+        ini_K=ini_K*2/3+RSV[i]/3
+        ini_D=ini_D*2/3+ini_K/3
+        K.append(ini_K)
+        D.append(ini_D)
+    return K,D
+df2=df1.iloc[6:,:]
+RSV=rsv_x(df1)
+K,D=KD(RSV)
+df2['K']=K
+df2['D']=D
+df2['RSV']=RSV
+df2.head()
+df3=df2.copy()
+df3['label']=df3['K']>df3['D']
+df4=pd.DataFrame(df3,columns=['日期','label'])
+#将分组数据反向合并到初始数据集df2
+df5=pd.merge(df2,df4,how='inner',on='日期')
+df5.head()
+
+df6=df5[df5['label']==True]
+df6['权重']=0.72
+df5=pd.merge(df5,df6,how='left',on='日期')
+df5.fillna(0.82,axis=1,inplace=True)
+
+df7=pd.DataFrame(df5,columns=['股指期货_x','现货_x','权重'])
+df7.to_csv('shouyilv.csv')
+data1=pd.read_csv('shouyilv.csv',encoding='utf-8')
+writer=pd.ExcelWriter('shouyilv.xlsx')
+data1.to_excel(writer,'sheet1')
+writer.save()
