@@ -1,0 +1,49 @@
+import requests
+import csv
+from pyquery import PyQuery as pq
+import re
+import pandas as pd
+import os
+
+headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 SE 2.X MetaSr 1.0'}
+
+os.chdir('D:\\日回报率文件')
+da2=pd.read_excel('全国主要城市天气信息.xlsx',sheet_name=0)
+sheng=list(da2.省份)
+city=list(da2.城市)
+piny=list(da2.拼音)
+
+data={}
+with open('qiwen1.csv', 'a', newline='', encoding='utf-8') as f:  # 准备保存数据到csv中
+    title = ['city1','city2','time','meanhigh','meanlow','zuigao','zuidi']#表头
+    writer = csv.DictWriter(f, fieldnames=title)
+    writer.writeheader()
+    for s in range(len(piny)):
+        for i in range(1, 4):
+            for k in range(2019, 2020):
+                m = k*100+i
+                url2 = 'https://m.tianqi.com/lishi/hongkong'+ '/'+ str(m)+'.html'#构建不同地区和时间的网址
+                re1 = requests.get(url2, headers=headers)#请求网址，获得网页源码
+                re1.encoding = 'utf-8'
+                htm1 = pq(re1.text)#采用pyquery库提取信息
+                html1 = htm1.find('div.history_weatherct1 div[class="count_temp"]')
+                try:
+                    data['city1']=sheng[s]#构建词典，并解析数据打包封装到一个词典对象中
+                    data['city2']=city[s]
+                    data['time']=m
+                    data['meanhigh']=html1.find('table > tr:nth-child(1) > td.line > h5').text()
+                    data['meanlow']=html1.find('table > tr:nth-child(1) > td:nth-child(2) > h5').text()
+                    data['zuigao']=html1.find('table > tr:nth-child(2) > td:nth-child(1) > h5').text()
+                    data['zuidi']=html1.find('table > tr:nth-child(2) > td:nth-child(2) > h5').text()
+                    writer.writerow(data)
+                except:
+                    data['city1']=sheng[s]
+                    data['city2']=city[s]
+                    data['time']=m
+                    data['meanhigh'] = 0
+                    data['meanlow'] = 0
+                    data['zuigao'] =0
+                    data['zuidi'] = 0
+                    writer.writerow(data)
+                    print('连接错误')
+                print(data)
