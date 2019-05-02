@@ -1,0 +1,59 @@
+import requests
+import json
+import csv
+from pyquery import PyQuery as pq
+
+response=requests.get('http://fund.eastmoney.com/fund.html#os_0;isall_0;ft_;pt_1')#进入开放型基金净值列表
+html=pq(response.content)
+fundcodes=[]
+doc=html.find('#oTable>tbody tr')#解析该页面库，获得各个基金的代码
+for item in doc.items():
+        fundcode=item.find('td.bzdm').text()
+        if fundcode:
+            fundcodes.append(fundcode)#将基金的代码放入一个列表中，如果要获得所有基金的代码，需要再次通过一个API接口实现翻页，接口如下，改变page的值即可实现翻页
+#接口为http://fund.eastmoney.com/Data/Fund_JJJZ_Data.aspx?t=1&lx=1&letter=&gsid=&text=&sort=zdf,desc&page=2,200&dt=1545196790418&atfc=&onlySale=0
+with open('data.csv','w',newline='') as f:#准备保存数据到csv中
+        title=['fundcode','date','dwjz','ljjz','jzzzl']
+        writer=csv.DictWriter(f,fieldnames=title)
+        writer.writeheader()
+        for i in range(len(fundcodes)):#遍历列表中的所有的基金代码，每种基金构建一个请求头
+            fundcode=fundcodes[i]
+            referer='http://fund.eastmoney.com/f10/jjjz_'+str(fundcode)+'.html'
+            headers={'User-Agent':'Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko)Chrome/58.0.3029.110 Mobile Safari/537.36',\
+                     'Accept':'*/*',
+                     'Accept-Encoding':'gzip, deflate, sdch',
+                     'Accept-Language':'zh-CN,zh;q=0.8',
+                     'Connection':'keep-alive',
+                     'Cookie':'st_pvi=07930945065492; st_sp=2018-11-27%2018%3A51%3A00; emshistory=%5B%22000063%20(%E4%B8%AD%E5%85%B4%E9%80%9A%E8%AE%AF)%22%2C\
+                      %22%E5%A5%A5%E7%91%9E%E5%BE%B7%22%2C%22603366%20(%E6%97%A5%E5%87%BA%E4%B8%9C%E6%96%B9)%22%5D; HAList=a-sh-603366-%u65E5%u51FA%u4E1C%u65B9%\
+                      2Ca-sz-000063-%u4E2D%u5174%u901A%u8BAF%2Cf-0-000300-%u6CAA%u6DF1300%2Ca-sz-000004-%u56FD%u519C%u79D1%u6280%2Ca-sh-600666-%u5965%u745E%u5F\
+                      B7%2Ca-sh-600585-%u6D77%u87BA%u6C34%u6CE5%2Ca-sz-002415-%u6D77%u5EB7%u5A01%u89C6%2Ca-sz-000333-%u7F8E%u7684%u96C6%u56E2; em_hq_fls=js; qg\
+                      qp_b_id=0d9ca6e188fa864702f0085974ad1e2b; EMFUND0=null; EMFUND1=null; EMFUND2=null; EMFUND3=11-27%2018%3A53%3A05@%23%24%u4E1C%u6D77%u7965\
+                      %u9F99%u6DF7%u5408%28LOF%29@%23%24168301; EMFUND4=11-27%2018%3A55%3A42@%23%24%u534E%u590F%u5927%u76D8%u7CBE%u9009@%23%24000011; EMFUND5=11\
+                      -27%2023%3A29%3A46@%23%24%u9E4F%u534E%u5F18%u5EB7%u7075%u6D3B%u914D%u7F6E%u6DF7%u5408A@%23%24003411; EMFUND6=11-27%2022%3A46%3A52@%23%24%u\
+                      9E4F%u534E%u5F18%u5EB7%u7075%u6D3B%u914D%u7F6E%u6DF7%u5408C@%23%24003412; EMFUND7=11-27%2022%3A47%3A34@%23%24%u6C11%u751F%u52A0%u94F6%u548\
+                      C%u946B%u5B9A%u5F00%u503A@%23%24002452; EMFUND8=11-27%2022%3A49%3A01@%23%24%u6C47%u4E30%u664B%u4FE1%u4F4E%u78B3%u5148%u950B@%23%24540008\
+                      ; EMFUND9=12-18 22:07:27@#$%u524D%u6D77%u5F00%u6E90%u91D1%u94F6%u73E0%u5B9D%u6DF7%u5408C@%23%24002207',\
+                      'Host':'api.fund.eastmoney.com',\
+                      'Referer':referer}
+            url='http://api.fund.eastmoney.com/f10/lsjz?fundCode='+str(fundcode)+'&pageIndex=1&pageSize=20&startDate=&endDate='#每种基金净值的API接口
+            r=requests.get(url,headers=headers)
+            res=r.text
+            js=json.loads(res,encoding='utf-8')#下载为json格式
+            max_page=int((int(js.get('TotalCount'))/20))+2#获取当前基金的最大页数，并加1
+            for j in range(1,max_page):#遍及单个基金的所有历史净值的表格页面
+                url='http://api.fund.eastmoney.com/f10/lsjz?fundCode='+str(fundcode)+'&pageIndex='+str(j)+'&pageSize=20&startDate=&endDate='
+                r=requests.get(url,headers=headers)#通过API接口实现翻页
+                res=r.text
+                js=json.loads(res,encoding='utf-8')#下载json格式的数据内容
+                its=js.get('Data').get('LSJZList')
+                for it in its:
+                    data={}
+                    data['fundcode']=fundcodes[i]
+                    data['date']=it.get('FSRQ')
+                    data['dwjz']=it.get('DWJZ')
+                    data['ljjz']=it.get('LJJZ')
+                    data['jzzzl']=it.get('JZZZL') 
+                    writer.writerow(data)#保存数据到data.csv中
+                    print('成功')#添加这一步是为了看到代码是否在运行
+    
