@@ -1,2 +1,2 @@
-# trainingprofile
-some codes
+# 主要为pandas的应用
+论文处理程序和一些其他的练习处理程序
